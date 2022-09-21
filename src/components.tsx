@@ -272,7 +272,7 @@ export interface GroupedVirtuosoProps<D, C> extends Omit<VirtuosoProps<D, C>, 't
   itemContent?: GroupItemContent<D, C>
 }
 
-export interface TableVirtuosoProps<D, C> extends Omit<VirtuosoProps<D, C>, 'components' | 'headerFooterTag' | 'topItemCount'> {
+export interface TableVirtuosoProps<D, C> extends Omit<VirtuosoProps<D, C>, 'components' | 'headerFooterTag'> {
   /**
    * Use the `components` property for advanced customization of the elements rendered by the table.
    */

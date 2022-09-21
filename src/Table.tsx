@@ -10,6 +10,7 @@ import useSize from './hooks/useSize'
 import { correctItemSize } from './utils/correctItemSize'
 import useWindowViewportRectRef from './hooks/useWindowViewportRect'
 import { VirtuosoMockContext } from './utils/context'
+import { positionStickyCssValue } from './utils/positionStickyCssValue'
 
 const tableComponentPropsSystem = u.system(() => {
   const itemContent = u.statefulStream<ItemContent<any, unknown>>((index: number) => <td>Item ${index}</td>)
@@ -70,7 +71,13 @@ const DefaultFillerRow = ({ height }: { height: number }) => (
   </tr>
 )
 
-export const Items = React.memo(function VirtuosoItems() {
+const topItemsStyle: React.CSSProperties = {
+  width: '100%',
+  position: positionStickyCssValue(),
+  top: 0,
+}
+
+export const Items = React.memo(function VirtuosoItems({ showTopItems = false }: { showTopItems?: boolean }) {
   const listState = useEmitterValue('listState')
   const sizeRanges = usePublisher('sizeRanges')
   const useWindowScroll = useEmitterValue('useWindowScroll')
@@ -83,12 +90,12 @@ export const Items = React.memo(function VirtuosoItems() {
   const trackItemSizes = useEmitterValue('trackItemSizes')
   const itemSize = useEmitterValue('itemSize')
   const log = useEmitterValue('log')
-
+  const fixedHeaderHeight = useEmitterValue('fixedHeaderHeight')
   const { callbackRef, ref } = useChangedListContentsSizes(
     sizeRanges,
     itemSize,
     trackItemSizes,
-    scrollContainerStateCallback,
+    showTopItems ? u.noop : scrollContainerStateCallback,
     log,
     undefined,
     customScrollParent
@@ -117,14 +124,14 @@ export const Items = React.memo(function VirtuosoItems() {
     return createElement(EmptyPlaceholder, contextPropIfNotDomElement(EmptyPlaceholder, context))
   }
 
-  const paddingTop = listState.offsetTop + paddingTopAddition + deviation
-  const paddingBottom = listState.offsetBottom
+  const paddingTop = showTopItems ? 0 : listState.offsetTop - listState.topListHeight + paddingTopAddition + deviation
+  const paddingBottom = showTopItems ? 0 : listState.offsetBottom
 
   const paddingTopEl = paddingTop > 0 ? <FillerRow height={paddingTop} key="padding-top" /> : null
 
   const paddingBottomEl = paddingBottom > 0 ? <FillerRow height={paddingBottom} key="padding-bottom" /> : null
 
-  const items = listState.items.map((item) => {
+  const items = (showTopItems ? listState.topItems : listState.items).map((item) => {
     const index = item.originalIndex!
     const key = computeItemKey(index + firstItemIndex, item.data, context)
 
@@ -153,7 +160,12 @@ export const Items = React.memo(function VirtuosoItems() {
 
   return createElement(
     TableBodyComponent,
-    { ref: callbackRef, 'data-test-id': 'virtuoso-item-list', ...contextPropIfNotDomElement(TableBodyComponent, context) },
+    {
+      style: showTopItems ? { ...topItemsStyle, top: fixedHeaderHeight } : {},
+      ref: callbackRef,
+      'data-test-id': showTopItems ? 'virtuoso-top-items-list' : 'virtuoso-item-list',
+      ...contextPropIfNotDomElement(TableBodyComponent, context),
+    },
     [paddingTopEl, ...items, paddingBottomEl]
   )
 })
@@ -220,6 +232,7 @@ const TableRoot: FC<TableRootProps> = React.memo(function TableVirtuosoRoot(prop
   const TheTable = useEmitterValue('TableComponent')
   const TheTHead = useEmitterValue('TableHeadComponent')
   const TheTFoot = useEmitterValue('TableFooterComponent')
+  const showTopItems = useEmitterValue('topItemsIndexes').length > 0
 
   const theHead = fixedHeaderContent
     ? React.createElement(
@@ -251,6 +264,7 @@ const TableRoot: FC<TableRootProps> = React.memo(function TableVirtuosoRoot(prop
       <TheViewport>
         {React.createElement(TheTable!, { style: { borderSpacing: 0 }, ...contextPropIfNotDomElement(TheTable, context) }, [
           theHead,
+          showTopItems ? <Items key="TopItemsTableBody" showTopItems={true} /> : null,
           <Items key="TableBody" />,
           theFoot,
         ])}

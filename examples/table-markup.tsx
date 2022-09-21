@@ -8,6 +8,7 @@ export default function App() {
       <TableVirtuoso
         ref={ref}
         totalCount={1000}
+        topItemCount={1}
         components={{
           EmptyPlaceholder: () => {
             return (
